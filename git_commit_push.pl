@@ -29,15 +29,42 @@ if ($commit_comment) {
 # chdir
 chdir($work_dir) or die("chdir failed. dir:$work_dir\n");
 
-# git pull
-my ($status_code, $output) = expect("git pull", (
+# git rev-parse --abbrev-ref HEAD
+my ($status_code, $output) = expect("git rev-parse --abbrev-ref HEAD", (
     undef,
+    [ eof => sub {} ],
+));
+if ($status_code) {
+    die("get current branch name failed.");
+}
+my $current_branch = $output;
+$current_branch =~ s/[\r\n]//g;
+
+# git remote -v
+# my ($status_code, $output) = expect("git remote -v", (
+#     undef,
+#     [ eof => sub {} ],
+# ));
+# my ($fetch_url, $push_url);
+# exit;
+
+# git pull
+my ($status_code, $output) = expect("git pull origin $current_branch", (
+    undef,
+    [ "Username for 'https://github.com': " =>
+        sub { shift->send("$user\n");
+            exp_continue;
+        } ],
+    [ "Password for 'https://" . $user . "\@github.com': " =>
+        sub { shift->send("$access_token\n");
+            exp_continue;
+        } ],
     [ eof => sub {} ],
 ));
 if ($status_code) {
     die("git pull failed.");
 }
-
+exit;
 # git add
 ($status_code, $output) = expect("git add $commit_files", (
     undef,
